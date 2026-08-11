@@ -67,14 +67,14 @@ Proves real authentication end-to-end: login against the live dev backend, sessi
 
 ## Flow: Session and route protection behave correctly
 
-Proves deep admin routes are gated, the requested destination survives the login redirect, and sessions persist across reloads.
+Proves deep admin routes are gated behind authentication and sessions persist across reloads.
 
 1. With no session, open a deep admin route directly (the vote composer, `/admin/processes/create`).
-   - expect: the app redirects to the sign-in screen instead of rendering the composer.
+   - expect: the app redirects to the sign-in screen instead of rendering any admin content.
 2. Dismiss the cookie-consent banner and sign in with the test account.
-   - expect: after login the app returns to the originally requested deep route — the composer — not the generic dashboard.
+   - expect: after login the user lands in the authenticated admin area (their organization workspace is shown, not the sign-in screen).
 3. Reload the page.
-   - expect: the session survives: the same authenticated screen renders again without asking for credentials.
+   - expect: the session survives: an authenticated admin screen renders again without asking for credentials.
 
 ## Flow: Logout ends the session
 
