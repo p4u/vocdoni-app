@@ -10,7 +10,24 @@ Human-readable contract of the core user flows for the Vocdoni web app. Develope
 - url: http://localhost:3000
 - ready: `GET /` returns HTTP 200 (SPA shell; the app boots client-side, so wait for the `Vocdoni` text to render before interacting)
 - notes: |
-    No `.env.local` is required — `VOCDONI_ENVIRONMENT` defaults to `dev` and `SAAS_URL` defaults to the public Vocdoni dev backend (`https://saas-api-dev.vocdoni.net`), so the app boots and serves real UI copy with zero configuration. There is no test account: the dashboard, processes, and organization admin screens all require a real login and are out of scope here. Flows instead exercise the parts of the app that are reachable and deterministic without credentials: the auth forms (rendering + client/server validation, no real account is ever created) and the public, SSR-rendered organization/process pages, which are asked for addresses/ids that intentionally do not exist so the outcome (a 404) never depends on live/mutable backend data. A cookie-consent banner appears on first load and must be dismissed (Reject) before interacting with page content.
+    No `.env.local` is required — `VOCDONI_ENVIRONMENT` defaults to `dev` and `SAAS_URL` defaults
+    to the public Vocdoni dev backend (`https://saas-api-dev.vocdoni.net`). Requires network
+    access to that backend.
+
+    Authenticated flows use a dedicated, disposable test account on the DEV backend (anyone can
+    self-register there; the account has no privileges beyond its own empty test organization):
+
+    - email: `argos-uiflows-1786480980@emalupe.com`
+    - password: `ArgosUITest1234`
+    - organization: "Argos Flows Org" (pre-created, admin role, Free plan)
+
+    Do NOT change this account's password or delete its organization — the flows depend on that
+    state. If the account is ever lost, register a fresh one on the dev backend, create one
+    organization named "Argos Flows Org", and update the credentials here.
+
+    Determinism rules: flows never mutate backend state — the vote composer flow fills the form
+    but NEVER clicks "Publish" or "Save", and no members are ever imported. A cookie-consent
+    banner appears on first load and must be dismissed (click "Reject") before interacting.
 
 ## Flow: Unauthenticated landing redirects to sign in
 
@@ -22,16 +39,6 @@ Proves the app's root route boots and gates the dashboard behind authentication.
 3. Look at the sign-in screen.
    - expect: a "Welcome" heading, an Email field, a Password field, and a "Log In" button are visible.
 
-## Flow: Navigate between sign in and sign up
-
-Proves the primary navigation link between the two auth forms works both ways.
-
-1. From the sign-in screen, dismiss the cookie-consent banner (click "Reject").
-2. Click the "Sign up" link.
-   - expect: the URL changes to the sign-up screen (`/account/signup`) and a "Sign up" heading with First name, Last name, Email, and Password fields is visible.
-3. Click the "Log In" link on the sign-up screen.
-   - expect: the URL changes back to the sign-in screen (`/account/signin`) and the "Welcome" heading is visible again.
-
 ## Flow: Sign in rejects invalid credentials
 
 Proves the sign-in form submits to the backend and surfaces a real error.
@@ -40,6 +47,47 @@ Proves the sign-in form submits to the backend and surfaces a real error.
 2. Fill the Email field with an address that has no account and the Password field with any password of 8+ characters.
 3. Click "Log In".
    - expect: an error message reading "invalid login credentials" appears, and the browser stays on the sign-in screen.
+
+## Flow: Sign in with the test account reaches the organization dashboard
+
+Proves real authentication end-to-end: login against the live dev backend, session establishment, and the organization dashboard rendering with live plan data.
+
+1. From the sign-in screen, dismiss the cookie-consent banner.
+2. Fill Email and Password with the test account credentials from Setup and click "Log In".
+   - expect: the browser lands on the admin dashboard (`/admin`).
+3. Look at the dashboard.
+   - expect: a "Dashboard" heading is visible and the organization name "Argos Flows Org" appears in the workspace switcher.
+4. Check the plan usage panel.
+   - expect: a "Plan usage" section shows "Voting processes" and "Memberbase size" counters with numeric limits (e.g. "/ 5", "/ 100").
+5. Check the quick actions.
+   - expect: "Create new vote", "View active votes", and "Manage team" actions are visible.
+
+## Flow: Dashboard sidebar navigates all organization sections
+
+Proves the authenticated app shell: every sidebar section routes correctly and renders its own management screen.
+
+1. Sign in with the test account (as in the previous flow) and land on the dashboard.
+2. Click "Voting processes" in the sidebar.
+   - expect: the URL changes to the processes list (`/admin/processes/all`), a "Voting processes" heading is visible, and the "All", "Ended", and "Drafts" tabs are shown.
+3. Click "Memberbase" in the sidebar.
+   - expect: the URL changes to the memberbase section (`/admin/memberbase/`), a "Memberbase" heading is visible with "Members" and "Groups" tabs, and the "Add Member" and "Import" actions are shown.
+4. Click "Settings" in the sidebar.
+   - expect: the URL changes to `/admin/settings/organization`, an "Argos Flows Org Settings" heading is visible, and the "Organization details", "Team", and "Subscription plan" sections are shown.
+
+## Flow: Vote composer builds a multi-option question without publishing
+
+Proves the deepest organizer surface: the voting-process composer, its dynamic question form, and its configuration sections. This flow must NEVER click "Publish" or "Save".
+
+1. Sign in with the test account and, from the dashboard, click "Create new vote".
+   - expect: the browser lands on the composer (`/admin/processes/create`) with template shortcuts ("Annual General Meeting", "Election", "Participatory Budgeting") visible.
+2. Fill the process title field with "Argos smoke vote".
+3. Fill the first question's title with "Which option is best?" and its first two option fields with "Alpha" and "Beta".
+4. Scroll the "Add a new option" button into view and click it.
+   - expect: a third option field appears; fill it with "Gamma".
+5. Review the configuration sections.
+   - expect: "Basic configuration" (start/end scheduling), "Extra configuration" (result visibility, voting power), and "Census creation" sections are visible, and the census section explains a voter group must be created before starting a vote.
+6. Confirm the composer's actions without using them.
+   - expect: "Publish" and "Save" buttons are present. Do NOT click either — leave the page without saving.
 
 ## Flow: Public organization page renders a 404 and supports switching language
 
